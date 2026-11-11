@@ -1,0 +1,6 @@
+name = "mobintec-ia"
+main = "worker.js"
+compatibility_date = "2025-06-01"
+
+[vars]
+ORIGEM_PERMITIDA = "https://pedraoalvess.github.io"

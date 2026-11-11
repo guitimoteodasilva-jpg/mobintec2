@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0d0a0b">
+  <title>MOBINTEC – ônibus turísticos acessíveis</title>
+
+  <script>
+    // Para ver erros na tela, abra o site com ?debug no final do endereço.
+    if (location.search.indexOf("debug") !== -1) {
+      window.addEventListener("error", function (e) {
+        alert("Erro: " + e.message + " " + (e.target.src || e.target.href || ""));
+      }, true);
+    }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script>
+    // Cores do projeto: preto e bordô.
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            fundo: "#0d0a0b", cartao: "#1f1519", texto: "#ffffff", borda: "#ffb3c4",
+            bordo: "#8b1f2f", painel: "#3b1522", painel2: "#4e1f2e", ok: "#5de08a"
+          }
+        }
+      }
+    };
+  </script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="style.css?v=27">
+</head>
+
+<body class="font-sans">
+  <a href="#principal" class="pular">Ir para o conteúdo</a>
+
+  <header class="topo">
+    <span class="logo" aria-hidden="true">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="14" rx="3"/><path d="M4 11h16M8 21v-4M16 21v-4"/><circle cx="8" cy="14" r=".6"/><circle cx="16" cy="14" r=".6"/></svg>
+    </span>
+    <span><span class="marca">MOBINTEC</span><span class="lema">Ônibus turísticos acessíveis em Foz do Iguaçu</span></span>
+  </header>
+
+  <main id="principal" tabindex="-1" class="max-w-4xl mx-auto px-5 py-8">
+
+    <!-- TELA 1: INÍCIO (comando de voz) -->
+    <section id="telaInicio" aria-labelledby="tituloInicio" class="flex flex-col items-center gap-6 text-center">
+      <p id="aviso" role="alert" hidden class="caixa w-full"></p>
+      <h1 id="tituloInicio" tabindex="-1" class="font-serif text-4xl md:text-5xl">MOBINTEC: para onde você quer ir?</h1>
+      <p class="text-xl">Toque em qualquer lugar da tela e diga o destino. Se você usa leitor de tela, vá até o botão Falar o destino e toque duas vezes.
+      </p>
+
+      <h2 class="sr-only">Fale o destino ou toque em uma das bolhas</h2>
+      <div id="bolhas" class="bolhas">
+      <div id="anel" class="anel">
+        <span class="onda" aria-hidden="true"></span>
+        <span class="onda" aria-hidden="true"></span>
+        <span class="onda" aria-hidden="true"></span>
+        <button id="botaoMicrofone" class="microfone" aria-pressed="false" aria-label="Falar o destino">
+          <svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" aria-hidden="true">
+            <rect x="9" y="2" width="6" height="12" rx="3" />
+            <path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8" />
+          </svg>
+        </button>
+      </div>
+      </div><!-- fim das bolhas: os botões dos destinos são criados pelo script.js -->
+
+      <div class="caixa w-full">
+        <p id="textoEstado" role="status" class="text-xl font-semibold">Microfone desligado</p>
+        <p id="textoOuvido" class="text-2xl mt-2"></p>
+      </div>
+
+      <div class="flex flex-wrap justify-center gap-3">
+        <button id="botaoRepetir" class="botao" aria-label="Repetir a última mensagem">Repetir</button>
+        <button id="botaoAjuda" class="botao" aria-label="Ouvir os comandos de voz">Ajuda</button>
+        <button id="botaoVoz" class="botao" aria-label="Desligar a voz do site. Desligue se você já usa um leitor de tela.">Voz do site: ligada</button>
+        <button id="botaoTema" class="botao" aria-label="Trocar para tema claro">Tema
+          claro</button>
+      </div>
+
+      
+
+      <form id="formulario" class="flex gap-3 w-full">
+        <input id="campoTexto" class="campo" aria-label="Digite um destino ou uma pergunta"
+          placeholder="Digite um destino ou pergunta" autocomplete="off">
+        <button class="botao botao-forte" aria-label="Buscar">Buscar</button>
+      </form>
+    </section>
+
+    <!-- TELA 2: ÔNIBUS TURÍSTICOS (painel, destinos e mapa) -->
+    <section id="telaLista" aria-labelledby="tituloLista" hidden aria-hidden="true" class="flex flex-col gap-6">
+      <button id="botaoVoltar" class="botao self-start" aria-label="Voltar ao início">Voltar ao início</button>
+      <h1 id="tituloLista" tabindex="-1" class="font-serif text-4xl">Ônibus turísticos de Foz do Iguaçu</h1>
+
+      <!-- Painel de acompanhamento: aparece depois de escolher um destino -->
+      <div id="painel" class="painel" hidden aria-hidden="true">
+        <h2 id="tituloPainel" tabindex="-1" class="font-serif text-3xl"></h2>
+
+        <!-- Alerta: os leitores de tela leem na hora que o texto muda -->
+        <div id="alerta" role="alert" aria-live="assertive" aria-atomic="true" class="alerta"></div>
+
+        <div class="flex flex-wrap gap-2" role="group" aria-label="Partes do painel">
+          <button class="botao botao-aba" data-aba="Onibus" aria-current="true" aria-label="Ver as informações do ônibus">Ônibus</button>
+          <button class="botao botao-aba" data-aba="Rota" aria-current="false" aria-label="Ver a rota e a localização">Rota</button>
+          <button class="botao botao-aba" data-aba="Perto" aria-current="false" aria-label="Ver pontos de referência próximos">Perto</button>
+          <button class="botao botao-aba" data-aba="Assistente" aria-current="false" aria-label="Falar com a assistente">Assistente</button>
+        </div>
+
+        <div id="abaOnibus" class="aba">
+        <div class="subcaixa">
+          <h3 class="text-xl font-semibold">Chegada estimada</h3>
+          <p id="tempo" aria-hidden="true" class="font-serif text-6xl"></p>
+          <div class="progresso" aria-hidden="true"><div id="barra" class="barra"></div></div>
+          <button id="botaoOuvirStatus" class="botao" aria-label="Ouvir o status do ônibus">Ouvir status</button>
+        </div>
+
+        <div class="subcaixa">
+          <h3 class="text-xl font-semibold">Câmera interna com IA</h3>
+          <p id="selo" aria-hidden="true" class="selo"></p>
+          <p id="textoCamera" class="text-lg"></p>
+        </div>
+
+        <div class="subcaixa">
+          <h3 class="text-xl font-semibold">Sobre o destino e acessibilidade</h3>
+          <p id="textoDestino" class="text-lg"></p>
+          <p id="textoAcessibilidade" class="text-lg"></p>
+          <p id="textoConfirmar" class="text-lg"></p>
+        </div>
+        </div>
+
+        <div id="abaRota" class="aba" hidden>
+        <div class="subcaixa">
+          <h3 class="text-xl font-semibold">Rota do ônibus</h3>
+          <p id="textoRota" class="text-lg"></p>
+          <a id="linkMaps" class="botao inline-block" target="_blank" rel="noopener"
+            aria-label="Abrir no Google Maps o caminho a pé até o ponto de embarque">Como chegar ao embarque (Google
+            Maps)</a>
+        </div>
+
+        </div>
+
+        <div id="abaPerto" class="aba" hidden>
+        <div class="subcaixa">
+          <h3 class="text-xl font-semibold">Hotéis e referências próximos</h3>
+          <ul id="listaHoteis" class="list-disc pl-6 text-lg"></ul>
+          <button id="botaoOuvirHoteis" class="botao" aria-label="Ouvir os hotéis próximos">Ouvir hotéis</button>
+        </div>
+
+        </div>
+
+        <div id="abaAssistente" class="aba" hidden>
+        <div class="subcaixa">
+          <h3 class="text-xl font-semibold">Pergunte à assistente</h3>
+          <p id="textoResposta" role="status" class="text-lg">Toque no botão e pergunte, por exemplo: tem assento livre?
+          </p>
+          <button id="botaoPerguntar" class="botao botao-forte" aria-pressed="false"
+            aria-label="Perguntar por voz">Perguntar por voz</button>
+        </div>
+        </div>
+      </div>
+
+      <h2 class="text-2xl font-semibold">Escolha um ônibus</h2>
+      <ul id="cartoes" class="flex flex-col gap-4"></ul>
+
+      <!-- O mapa é só visual: tudo o que ele mostra também está em texto acima -->
+      <div id="mapa" aria-hidden="true"></div>
+      <p id="mensagemMapa" role="status"></p>
+    </section>
+  </main>
+
+  <footer class="rodape">
+    Mapa © OpenStreetMap, mapa Esri; rotas OSRM; hotéis OpenStreetMap. Se a assistente de IA estiver ativada, o texto do que você fala é enviado ao Google (Gemini) para gerar a resposta. Na versão gratuita, o Google pode usar esse texto para melhorar seus produtos: não diga dados pessoais. Posição do ônibus e leitura da câmera
+    são simuladas.
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // Se o unpkg estiver bloqueado, tenta o jsDelivr.
+    window.L || document.write('<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"><script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"><\/script>');
+  </script>
+  <script src="dados.js?v=27"></script>
+  <script src="script.js?v=27" defer></script>
+</body>
+
+</html>
