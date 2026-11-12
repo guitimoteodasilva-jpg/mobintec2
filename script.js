@@ -53,7 +53,7 @@ function mostrar(elemento, visivel) {
 const VELOCIDADE_TESTE = 5;
 
 // Endereço da função da assistente de IA (veja a pasta "ia"). Deixe vazio ("") para desligar a IA.
-const URL_DA_IA = "https://ia.pdeoliveiraalves840.workers.dev";
+const URL_DA_IA = "";
 
 
 const BOAS_VINDAS = "Bem-vindo ao Mobintec, o aplicativo dos ônibus turísticos de Foz do Iguaçu. " +
@@ -61,7 +61,7 @@ const BOAS_VINDAS = "Bem-vindo ao Mobintec, o aplicativo dos ônibus turísticos
   "Marco das Três Fronteiras ou Templo Budista. Se você usa leitor de tela, vá até o botão Falar o destino e toque duas vezes. " +
   "Depois você pode perguntar sobre o ônibus, o assento, a rota e hotéis próximos.";
 
-const TEXTO_AJUDA = "Você pode dizer: o nome de um destino, como Cataratas; quando o ônibus chega; acessibilidade; " +
+const TEXTO_AJUDA = "Você pode dizer: o nome de um destino, como Cataratas; quando o ônibus chega; acessibilidade; mapa; minha localização; restaurantes perto; pontos turísticos perto; " +
   "tem assento livre; qual a rota; tema claro; tema escuro; hotéis perto; onde estou; repetir; mais devagar; mais rápido; " +
   "silêncio; desligar a voz; ou voltar.";
 
@@ -141,26 +141,37 @@ function pararAcompanhamento() {
 
 // Volta ao início. Funciona também com o botão "voltar" do aparelho.
 function voltar() {
-  if (history.state && history.state.tela === "lista") {
+  const alvo = pegar("#telaMapa").hidden ? "inicio" : "lista";   // do mapa volta para os ônibus; dos ônibus, para o início
+  if (history.state && history.state.tela && history.state.tela !== alvo) {
     history.back();
   } else {
-    abrirTela("inicio");
+    abrirTela(alvo, false, true);
   }
 }
 
-function abrirTela(nome, silencioso) {
+function abrirTela(nome, silencioso, semHistorico) {
   pararMicrofone();
   mostrar(pegar("#telaInicio"), nome === "inicio");
   mostrar(pegar("#telaLista"), nome === "lista");
-  if (nome === "lista") {
-    criarMapa();
+  mostrar(pegar("#telaMapa"), nome === "mapa");
+
+  if (nome !== "inicio" && !semHistorico) {
     try {
-      if (!(history.state && history.state.tela === "lista")) {
-        history.pushState({ tela: "lista" }, "");   // para o botão "voltar" do aparelho voltar ao início
+      if (!(history.state && history.state.tela === nome)) {
+        history.pushState({ tela: nome }, "");   // para o botão "voltar" do aparelho funcionar
       }
     } catch (erro) { }
+  }
+
+  if (nome === "lista") {
     pegar("#tituloLista").focus();
     falar("Ônibus turísticos. Escolha um destino.");
+  } else if (nome === "mapa") {
+    criarMapa();
+    desenharRotaNoMapa();
+    mostrarVoceNoMapa();
+    pegar("#tituloMapa").focus();
+    falar("Mapa. Para ver onde você está, ative a localização.");
   } else {
     pararAcompanhamento();
     limparBolhas();
@@ -566,7 +577,11 @@ function responder(texto) {
   }
   if (t.includes("ajuda") || t.includes("comandos")) { avisar(TEXTO_AJUDA); return; }
   if (t.includes("voltar") || t.includes("inicio")) { voltar(); return; }
-  if (t.includes("onde estou") || t.includes("localizacao")) { descobrirLocalizacao(); return; }
+  if (t.includes("onde estou") || t.includes("localizacao")) { falarLocalizacao(); return; }
+  if (t.includes("mapa")) { abrirTela("mapa"); return; }
+  if (t.includes("restaurante") || t.includes("comer") || t.includes("lanche")) { pedirPerto("restaurantes"); return; }
+  if (t.includes("ponto turistico") || t.includes("pontos turisticos") || t.includes("atracao") || t.includes("atracoes") || t.includes("passeio")) { pedirPerto("atracoes"); return; }
+  if (t.includes("hotel") || t.includes("hospedagem") || t.includes("pousada") || t.includes("perto") || t.includes("proxim")) { pedirPerto("hoteis"); return; }
 
   // 3) Perguntas sobre o ônibus (precisam de um destino já escolhido).
   if (!destinoAtual) {
@@ -575,7 +590,6 @@ function responder(texto) {
     return;
   }
   if (t.includes("acessibilidade") || t.includes("rampa")) { mostrarAba("Onibus"); avisar(textoAcessibilidade()); return; }
-  if (t.includes("hotel") || t.includes("perto") || t.includes("proxim")) { mostrarAba("Perto"); avisar(textoHoteis()); return; }
   if (t.includes("assento") || t.includes("poltrona") || t.includes("lugar") || t.includes("livre")) { mostrarAba("Onibus"); avisar(textoAssento()); return; }
   if (t.includes("rota") || t.includes("caminho") || t.includes("linha") || t.includes("distancia")) { mostrarAba("Rota"); avisar(textoRota()); return; }
   if (t.includes("onibus") || t.includes("chega") || t.includes("minuto") || t.includes("tempo") || t.includes("onde")) { mostrarAba("Onibus"); avisar(frasePrincipal()); return; }
@@ -593,9 +607,13 @@ async function perguntarParaIA(texto) {
   pegar("#textoResposta").textContent = "Pensando…";
   let contexto = { destino: "nenhum escolhido ainda" };
   if (destinoAtual && dados) {
-    contexto = { destino: destinoAtual.nome, descricao: destinoAtual.descricao, servico: destinoAtual.servico, acessibilidade: destinoAtual.acessibilidade, aConfirmar: destinoAtual.aConfirmar, status: frasePrincipal(), rota: textoRota(), hoteis: textoHoteis() };
+    contexto = { destino: destinoAtual.nome, descricao: destinoAtual.descricao, servico: destinoAtual.servico, acessibilidade: destinoAtual.acessibilidade, aConfirmar: destinoAtual.aConfirmar, status: frasePrincipal(), rota: textoRota(), lugaresPerto: textoPerto() };
     mostrarAba("Assistente");
   }
+  contexto.todosOsDestinos = DESTINOS.map(function (d) {
+    return { nome: d.nome, servico: d.servico, descricao: d.descricao, acessibilidade: d.acessibilidade };
+  });
+  if (distanciaAteVoce !== null) { contexto.voceEstaA = formatarDistancia(distanciaAteVoce) + " do ponto de embarque"; }
   try {
     const controle = new AbortController();
     const prazo = setTimeout(function () { controle.abort(); }, 15000);
@@ -624,27 +642,79 @@ function mudarVelocidade(nova) {
   falar("Velocidade da voz alterada.");
 }
 
-// Mostra onde a pessoa está (só quando ela pede). O navegador vai pedir permissão.
-function descobrirLocalizacao() {
+// ---------- Localização em tempo real (só liga quando a pessoa pede) ----------
+let idLocal = null;                 // número da vigilância de posição (null = desligada)
+let posicaoUsuario = null;          // [latitude, longitude] da pessoa
+let ultimoLimiar = null;            // último aviso de proximidade já falado
+let ultimaDistanciaMostrada = null;
+
+function mostrarVoceNoMapa() {
+  if (!mapa || !posicaoUsuario) { return; }
+  if (marcadorVoce) {
+    marcadorVoce.setLatLng(posicaoUsuario);
+  } else {
+    marcadorVoce = L.marker(posicaoUsuario, { icon: criarPino("EU", "#5de08a", "#0d0a0b", 40), keyboard: false }).addTo(mapa);
+  }
+}
+
+function atualizarBotaoLocal() {
+  pegar("#botaoLocal").textContent = idLocal !== null ? "Desligar minha localização" : "Ativar minha localização";
+}
+
+function aoReceberPosicao(posicao) {
+  posicaoUsuario = [posicao.coords.latitude, posicao.coords.longitude];
+  distanciaAteVoce = distanciaEntre(posicaoUsuario, EMBARQUE.posicao);
+  mostrarVoceNoMapa();
+
+  // O texto só muda quando a distância muda bastante (para não ficar falando toda hora).
+  if (ultimaDistanciaMostrada === null || Math.abs(distanciaAteVoce - ultimaDistanciaMostrada) >= 25) {
+    ultimaDistanciaMostrada = distanciaAteVoce;
+    pegar("#textoLocal").textContent = "Você está a " + formatarDistancia(distanciaAteVoce) + " do ponto de embarque, " + EMBARQUE.nome + ".";
+  }
+
+  // Avisos falados ao chegar perto do embarque: um por faixa de distância.
+  let faixa = null;
+  if (distanciaAteVoce <= 50) { faixa = 50; } else if (distanciaAteVoce <= 200) { faixa = 200; } else if (distanciaAteVoce <= 500) { faixa = 500; }
+  if (faixa !== null && (ultimoLimiar === null || faixa < ultimoLimiar)) {
+    ultimoLimiar = faixa;
+    avisar(faixa === 50 ? "Você chegou ao ponto de embarque." : "Você está a menos de " + faixa + " metros do ponto de embarque.");
+  }
+}
+
+function ligarLocalizacao() {
   if (!navigator.geolocation) {
     avisar("Este navegador não tem localização.");
     return;
   }
-  navigator.geolocation.getCurrentPosition(function (posicao) {
-    const ponto = [posicao.coords.latitude, posicao.coords.longitude];
-    distanciaAteVoce = distanciaEntre(ponto, EMBARQUE.posicao);
-    if (mapa) {
-      if (marcadorVoce) { marcadorVoce.remove(); }
-      marcadorVoce = L.marker(ponto, { icon: criarPino("EU", "#5de08a", "#0d0a0b", 40), keyboard: false }).addTo(mapa);
-    }
-    if (distanciaAteVoce !== null) {
-      avisar("Você está a " + formatarDistancia(distanciaAteVoce) + " do ponto de embarque, " + EMBARQUE.nome + ".");
-    } else {
-      avisar("Localização encontrada.");
-    }
-  }, function () {
-    avisar("Não consegui sua localização. O embarque é no " + EMBARQUE.nome + ".");
-  });
+  if (idLocal !== null) {   // já estava ligada: desliga
+    navigator.geolocation.clearWatch(idLocal);
+    idLocal = null;
+    posicaoUsuario = null;
+    distanciaAteVoce = null;
+    ultimoLimiar = null;
+    ultimaDistanciaMostrada = null;
+    if (marcadorVoce) { marcadorVoce.remove(); marcadorVoce = null; }
+    atualizarBotaoLocal();
+    pegar("#textoLocal").textContent = "Localização desligada. O ponto de embarque é no " + EMBARQUE.nome + ".";
+    avisar("Localização desligada.");
+    return;
+  }
+  avisar("Ligando a localização. Se o navegador perguntar, escolha permitir.");
+  idLocal = navigator.geolocation.watchPosition(aoReceberPosicao, function () {
+    navigator.geolocation.clearWatch(idLocal);
+    idLocal = null;
+    atualizarBotaoLocal();
+    avisar("Não consegui sua localização. Libere a localização no navegador. O embarque é no " + EMBARQUE.nome + ".");
+  }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+  atualizarBotaoLocal();
+}
+
+function falarLocalizacao() {
+  if (idLocal === null) {
+    ligarLocalizacao();
+  } else {
+    avisar(pegar("#textoLocal").textContent);
+  }
 }
 
 /* ---------- 8) Painel do ônibus ---------- */
@@ -685,14 +755,23 @@ function textoRota() {
     formatarDistancia(dados.distancia) + ", cerca de " + Math.round(dados.duracao / 60) + " minutos de viagem.";
 }
 
-function textoHoteis() {
-  if (dados.hoteis.length === 0) {
-    return "Não encontrei hotéis próximos nos dados do mapa.";
+// Tipos de lugar que a pessoa pode pedir (dados do OpenStreetMap).
+const CATEGORIAS = {
+  hoteis: { nome: "hotéis", sigla: "H", filtro: '["tourism"~"hotel|hostel|guest_house|motel|apartment"]' },
+  restaurantes: { nome: "restaurantes", sigla: "R", filtro: '["amenity"~"restaurant|cafe|fast_food|bar"]' },
+  atracoes: { nome: "pontos turísticos", sigla: "T", filtro: '["tourism"~"attraction|museum|viewpoint|zoo|theme_park|gallery"]' }
+};
+let perto = { categoria: "hoteis", nome: "hotéis", referencia: "", lista: [] };
+let numeroDaBusca = 0;
+
+function textoPerto() {
+  if (perto.lista.length === 0) {
+    return "Não encontrei " + perto.nome + " perto de " + perto.referencia + " nos dados do mapa.";
   }
-  const nomes = dados.hoteis.map(function (hotel) {
-    return hotel.nome + ", a " + formatarDistancia(hotel.distancia);
+  const nomes = perto.lista.map(function (lugar) {
+    return lugar.nome + ", a " + formatarDistancia(lugar.distancia);
   });
-  return "Perto de " + destinoAtual.nome + ": " + nomes.join("; ") + ".";
+  return "Perto de " + perto.referencia + ", " + perto.nome + ": " + nomes.join("; ") + ".";
 }
 
 // Frase principal: tempo de chegada + assento PCD.
@@ -729,6 +808,19 @@ function posicaoDoOnibus() {
   const parte = dados.segundosAteChegar / dados.duracao;
   const indice = Math.round(parte * (dados.pontos.length - 1));
   return dados.pontos[indice];
+}
+
+// Desenha no mapa a rota, o destino, o ônibus e os lugares perto (só se o mapa já foi aberto).
+function desenharRotaNoMapa() {
+  if (!mapa || !dados || !destinoAtual) { return; }
+  camada.clearLayers();
+  L.polyline(dados.pontos, { color: corDaRota(), weight: 6 }).addTo(camada);
+  L.marker(destinoAtual.posicao, { icon: criarPino(destinoAtual.sigla, "#8b1f2f", "#ffffff", 36), keyboard: false }).addTo(camada);
+  marcadorOnibus = L.marker(posicaoDoOnibus(), { icon: criarPino(destinoAtual.sigla, "#ffffff", "#0d0a0b", 46), keyboard: false }).addTo(camada);
+  perto.lista.forEach(function (lugar) {
+    L.marker(lugar.posicao, { icon: criarPino(CATEGORIAS[perto.categoria].sigla, "#ffffff", "#0d0a0b", 30), keyboard: false }).addTo(camada);
+  });
+  mapa.fitBounds(L.polyline(dados.pontos).getBounds(), { padding: [30, 30] });
 }
 
 // Atualiza os textos e cores do painel.
@@ -789,18 +881,11 @@ async function escolherDestino(indice) {
     segundosAteChegar: Math.min(rota.duracao, 240 + sortear(120)),   // simulado: ônibus a 4 a 6 minutos
     assentoPcdOcupado: false,                                        // simulado: câmera com IA
     assentosLivres: 2 + sortear(8),                                  // simulado
-    hoteis: []
   };
   dados.segundosIniciais = dados.segundosAteChegar;
   ultimoMinuto = minutosQueFaltam();
 
-  // Desenha no mapa: rota, destino e ônibus.
-  if (mapa) {
-    L.polyline(dados.pontos, { color: corDaRota(), weight: 6 }).addTo(camada);
-    L.marker(destinoAtual.posicao, { icon: criarPino(destinoAtual.sigla, "#8b1f2f", "#ffffff", 36), keyboard: false }).addTo(camada);
-    marcadorOnibus = L.marker(posicaoDoOnibus(), { icon: criarPino(destinoAtual.sigla, "#ffffff", "#0d0a0b", 46), keyboard: false }).addTo(camada);
-    mapa.fitBounds(L.polyline(dados.pontos).getBounds(), { padding: [30, 30] });
-  }
+  desenharRotaNoMapa();
 
   pegar("#textoRota").textContent = textoRota();
   pegar("#textoDestino").textContent = destinoAtual.descricao;
@@ -820,7 +905,7 @@ async function escolherDestino(indice) {
 
   relogioDoTempo = setInterval(passarTempo, 1000);
   relogioDaCamera = setInterval(lerCamera, 12000);
-  buscarHoteis(minhaEscolha);
+  buscarPerto("hoteis");
 }
 
 // A cada segundo: o ônibus anda e o tempo diminui.
@@ -856,47 +941,70 @@ function lerCamera() {
 }
 
 // Procura hotéis até 5 km do destino (dados do OpenStreetMap).
-async function buscarHoteis(minhaEscolha) {
+// Procura lugares de um tipo perto da pessoa (se a localização estiver ligada) ou perto do destino.
+async function buscarPerto(categoria) {
+  const tipo = CATEGORIAS[categoria];
+  document.querySelectorAll(".botao-cat").forEach(function (botao) {
+    botao.setAttribute("aria-current", botao.dataset.cat === categoria ? "true" : "false");
+  });
+  const centro = posicaoUsuario || (destinoAtual ? destinoAtual.posicao : null);
+  if (!centro) { return false; }
+
+  const minhaBusca = numeroDaBusca + 1;
+  numeroDaBusca = minhaBusca;
+  perto = { categoria: categoria, nome: tipo.nome, referencia: posicaoUsuario ? "você" : destinoAtual.nome, lista: [] };
+  pegar("#textoPerto").textContent = "Procurando " + tipo.nome + " perto de " + perto.referencia + "…";
+
+  const lista = [];
   try {
-    const consulta = '[out:json][timeout:15];nwr["tourism"~"hotel|hostel|guest_house|motel|apartment"]["name"]' +
-      "(around:5000," + destinoAtual.posicao[0] + "," + destinoAtual.posicao[1] + ");out center 40;";
+    const raio = posicaoUsuario ? 3000 : 5000;
+    const consulta = "[out:json][timeout:15];nwr" + tipo.filtro + '["name"]' +
+      "(around:" + raio + "," + centro[0] + "," + centro[1] + ");out center 40;";
     const resposta = await fetch("https://overpass-api.de/api/interpreter", {
       method: "POST",
       body: new URLSearchParams({ data: consulta })
     });
     const json = await resposta.json();
-    if (minhaEscolha !== numeroDaEscolha) { return; }
-
-    const lista = [];
     for (const item of json.elements) {
       const ponto = item.center ? [item.center.lat, item.center.lon] : [item.lat, item.lon];
       if (ponto[0] && item.tags && item.tags.name) {
-        lista.push({ nome: item.tags.name, posicao: ponto, distancia: distanciaEntre(destinoAtual.posicao, ponto) });
+        lista.push({ nome: item.tags.name, posicao: ponto, distancia: distanciaEntre(centro, ponto) });
       }
     }
     lista.sort(function (a, b) { return a.distancia - b.distancia; });
-    dados.hoteis = lista.slice(0, 4);
   } catch (erro) {
-    if (minhaEscolha !== numeroDaEscolha) { return; }
-    dados.hoteis = [];
+    lista.length = 0;
   }
+  if (minhaBusca !== numeroDaBusca) { return false; }   // a pessoa já pediu outra coisa
+  perto.lista = lista.slice(0, 4);
 
   // Mostra na lista e no mapa.
-  const itens = dados.hoteis.map(function (hotel) {
+  const itens = perto.lista.map(function (lugar) {
     const item = document.createElement("li");
-    item.textContent = hotel.nome + " · " + formatarDistancia(hotel.distancia);
+    item.textContent = lugar.nome + " · " + formatarDistancia(lugar.distancia);
     return item;
   });
   if (itens.length === 0) {
     const vazio = document.createElement("li");
-    vazio.textContent = "Sem hotéis nos dados do mapa nesta região.";
+    vazio.textContent = "Nenhum resultado nos dados do mapa.";
     itens.push(vazio);
   }
   pegar("#listaHoteis").replaceChildren(...itens);
-  dados.hoteis.forEach(function (hotel) {
-    if (!mapa) { return; }
-    L.marker(hotel.posicao, { icon: criarPino("H", "#ffffff", "#0d0a0b", 30), keyboard: false }).addTo(camada);
-  });
+  pegar("#textoPerto").textContent = "Mostrando " + tipo.nome + " perto de " + perto.referencia + ".";
+  desenharRotaNoMapa();
+  return true;
+}
+
+// Quando a pessoa pede (por voz ou botão): procura e lê o resultado.
+async function pedirPerto(categoria) {
+  if (!posicaoUsuario && !destinoAtual) {
+    avisar("Para procurar lugares, diga um destino ou ative a localização no mapa.");
+    return;
+  }
+  if (destinoAtual) { mostrarAba("Perto"); }
+  avisar("Procurando " + CATEGORIAS[categoria].nome + "…");
+  const achou = await buscarPerto(categoria);
+  if (achou) { avisar(textoPerto()); }
 }
 
 /* ---------- 9) Ligações dos botões e início ---------- */
@@ -930,10 +1038,16 @@ document.querySelectorAll(".botao-aba").forEach(function (botao) {
   botao.onclick = function () {
     if (!dados) { return; }
     mostrarAba(botao.dataset.aba);
-    const falas = { Onibus: frasePrincipal, Rota: textoRota, Perto: textoHoteis, Assistente: function () { return "Pergunte por voz ou digite. Por exemplo: tem assento livre?"; } };
+    const falas = { Onibus: frasePrincipal, Rota: textoRota, Perto: textoPerto, Assistente: function () { return "Pergunte por voz ou digite. Por exemplo: tem assento livre?"; } };
     avisar(falas[botao.dataset.aba]());
   };
 });
+document.querySelectorAll(".botao-cat").forEach(function (botao) {
+  botao.onclick = function () { pedirPerto(botao.dataset.cat); };
+});
+pegar("#botaoAbrirMapa").onclick = function () { abrirTela("mapa"); };
+pegar("#botaoVoltarMapa").onclick = function () { voltar(); };
+pegar("#botaoLocal").onclick = function () { ligarLocalizacao(); };
 pegar("#botaoVoltar").onclick = function () { voltar(); };
 pegar("#botaoRepetir").onclick = function () { repetirUltima(); };
 pegar("#botaoVoz").onclick = function () { definirVoz(!vozLigada, true); };
@@ -946,7 +1060,7 @@ aplicarTema(temaSalvo ? temaSalvo === "claro" : true, false);   // primeira visi
 definirVoz(vozSalva !== "desligada", false);
 pegar("#botaoAjuda").onclick = function () { avisar(TEXTO_AJUDA); };
 pegar("#botaoOuvirStatus").onclick = function () { if (dados) { anunciarStatus(""); } };
-pegar("#botaoOuvirHoteis").onclick = function () { if (dados) { avisar(textoHoteis()); } };
+pegar("#botaoOuvirHoteis").onclick = function () { if (dados) { avisar(textoPerto()); } };
 
 // Formulário de texto (alternativa à voz).
 pegar("#formulario").onsubmit = function (evento) {
@@ -977,7 +1091,8 @@ if (/Instagram|FBAN|FBAV|FB_IAB|WhatsApp|TikTok|; wv\)/i.test(navegador)) {
 
 // O botão "voltar" do aparelho leva ao início (só se a lista estiver aberta).
 window.addEventListener("popstate", function () {
-  if (!pegar("#telaLista").hidden) { abrirTela("inicio"); }
+  const tela = (history.state && history.state.tela) || "inicio";
+  abrirTela(tela, false, true);
 });
 
 // Link "Ir para o conteúdo": foca o conteúdo sem mudar o endereço da página.
