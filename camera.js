@@ -595,7 +595,57 @@
   /* ---------- Eventos ---------- */
 
   botaoAbrir.onclick = abrirCamera;
-  botaoAnalisar.onclick = analisarFoto;
+ botaoAnalisar.onclick = async function () {
+  try {
+    escrever("Botão acionado. Verificando a câmera…");
+
+    if (modo !== "celular") {
+      escrever(
+        "Selecione Câmera deste celular antes de analisar."
+      );
+      return;
+    }
+
+    if (!fluxo || !fluxo.active) {
+      escrever(
+        "A câmera não está ativa. Toque em Abrir câmera traseira."
+      );
+      return;
+    }
+
+    if (ocupado) {
+      escrever(
+        "Já existe uma análise em andamento. Aguarde. " +
+        "Se não terminar, toque em Parar câmera e consultas " +
+        "e abra a câmera novamente."
+      );
+      return;
+    }
+
+    if (
+      video.readyState < 2 ||
+      !video.videoWidth ||
+      !video.videoHeight
+    ) {
+      escrever(
+        "A câmera abriu, mas a imagem ainda não está pronta. " +
+        "Aguarde alguns segundos e tente novamente."
+      );
+      return;
+    }
+
+    await analisarFoto();
+  } catch (erro) {
+    ocupado = false;
+    botaoAnalisar.disabled = !fluxo;
+
+    escrever(
+      "Não consegui iniciar a análise: " +
+      String(erro.message || erro)
+    );
+  }
+};
+
   botaoConsultar.onclick = iniciarConsultaFixa;
 
   el("ouvirCameraMobintec").onclick = ouvirLeitura;
