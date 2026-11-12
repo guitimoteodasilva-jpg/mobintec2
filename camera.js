@@ -20,6 +20,10 @@
   let abrindo = false;
   let leitura = null;
   let ultimaMensagemCamera = "";
+  let automatico = false;
+let temporizadorAutomatico = null;
+let cicloAutomatico = 0;
+
 
   if (document.getElementById("cameraMobintec")) {
     return;
@@ -80,8 +84,11 @@
       </video>
 
       <p>
-        Cada análise envia uma foto ao backend e ao Roboflow
-        e pode consumir créditos. Não há envio automático.
+  Enquanto a câmera estiver aberta, imagens serão enviadas
+automaticamente ao backend e ao Roboflow.
+Isso consome créditos. Para encerrar, toque em
+Parar câmera e consultas.
+
       </p>
     </div>
 
@@ -204,7 +211,13 @@
   }
 
   function parar(mostrarMensagem = true) {
-    sessao += 1;
+  automatico = false;
+  cicloAutomatico += 1;
+
+  clearTimeout(temporizadorAutomatico);
+  temporizadorAutomatico = null;
+
+  sessao += 1;
 
     clearTimeout(temporizador);
     temporizador = null;
@@ -251,6 +264,75 @@
   }
 
   async function abrirCamera() {
+    function iniciarAutomatico() {
+  clearTimeout(temporizadorAutomatico);
+
+  automatico = true;
+  cicloAutomatico += 1;
+
+  const meuCiclo = cicloAutomatico;
+
+  async function executarCiclo() {
+    if (
+      !automatico ||
+      meuCiclo !== cicloAutomatico ||
+      modo !== "celular" ||
+      !fluxo ||
+      !fluxo.active ||
+      document.hidden
+    ) {
+      return;
+    }
+
+    // Aguarda a câmera disponibilizar a imagem.
+    if (
+      ocupado ||
+      video.readyState < 2 ||
+      !video.videoWidth ||
+      !video.videoHeight
+    ) {
+      temporizadorAutomatico = setTimeout(
+        executarCiclo,
+        1000
+      );
+      return;
+    }
+
+    await analisarFoto();
+
+    // Uma parada ou troca de câmera invalida este ciclo.
+    if (
+      !automatico ||
+      meuCiclo !== cicloAutomatico
+    ) {
+      return;
+    }
+
+    if (!recente()) {
+      automatico = false;
+
+      escrever(
+        estado.textContent +
+        " O modo automático foi pausado. " +
+        "Para tentar novamente, toque em Abrir câmera traseira."
+      );
+
+      return;
+    }
+
+    // Só agenda a próxima após concluir a anterior.
+    temporizadorAutomatico = setTimeout(
+      executarCiclo,
+      8000
+    );
+  }
+
+  temporizadorAutomatico = setTimeout(
+    executarCiclo,
+    1000
+  );
+}
+
     if (abrindo || modo !== "celular") {
       return;
     }
@@ -307,10 +389,13 @@
         return;
       }
 
-      escrever(
-        "Câmera aberta. Aguarde a imagem aparecer, " +
-        "aponte para os assentos e toque em Analisar uma foto."
-      );
+escrever(
+  "Câmera aberta. Análise automática ativada. " +
+  "Aponte para os assentos e mantenha o celular estável. " +
+  "Para encerrar, toque em Parar câmera e consultas."
+);
+
+iniciarAutomatico();
 
     } catch (erro) {
       if (minhaSessao !== sessao) {
