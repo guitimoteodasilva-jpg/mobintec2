@@ -2,5 +2,9 @@ name = "mobintec-ia"
 main = "worker.js"
 compatibility_date = "2025-06-01"
 
+# Plano C: se o Gemini estiver fora do ar, usa o Workers AI da Cloudflare (gratuito, sem chave).
+[ai]
+binding = "AI"
+
 [vars]
 ORIGEM_PERMITIDA = "https://pedraoalvess.github.io"
