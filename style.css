@@ -630,3 +630,10 @@ body.claro .pino {
     border: 2px solid ButtonText;
   }
 }
+ @media (max-width: 640px) {
+  #controlesCelularMobintec > p:first-of-type {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+  }
+}
