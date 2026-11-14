@@ -42,12 +42,6 @@ let cicloAutomatico = 0;
       Análise de assentos por câmera
     </h2>
 
-    <p>
-      Integração versão 5.
-      A câmera é independente do destino escolhido.
-      Nenhuma disponibilidade PCD é confirmada.
-    </p>
-
     <label for="fonteCameraMobintec">
       Fonte da imagem
     </label>
@@ -83,13 +77,7 @@ let cicloAutomatico = 0;
         aria-label="Prévia da câmera deste aparelho">
       </video>
 
-      <p>
-  Enquanto a câmera estiver aberta, imagens serão enviadas
-automaticamente ao backend e ao Roboflow.
-Isso consome créditos. Para encerrar, toque em
-Parar câmera e consultas.
-
-      </p>
+ 
     </div>
 
     <div id="controlesFixaMobintec" hidden>
@@ -127,14 +115,12 @@ Parar câmera e consultas.
       id="estadoCameraMobintec"
       role="status"
       aria-live="polite">
-      Versão 5 carregada. Abra a câmera para começar.
+     Abra a câmera para começar.
     </p>
 
     <p>
       O resultado é uma estimativa, não uma confirmação
-      de lugar livre. Esquerda e direita referem-se
-      à imagem. Não use este protótipo para se deslocar
-      sem ajuda.
+      de lugar livre.
     </p>
   `;
 
