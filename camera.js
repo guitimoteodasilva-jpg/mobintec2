@@ -7,7 +7,7 @@
 (function () {
   "use strict";
 
-  const BACKEND = "https://mobintec-backend.onrender.com";
+  const BACKEND = "https://onrender.com";
   const CAMERA_ID = "onibus-demo";
   const VALIDADE_MS = 15000;
 
@@ -21,9 +21,8 @@
   let leitura = null;
   let ultimaMensagemCamera = "";
   let automatico = false;
-let temporizadorAutomatico = null;
-let cicloAutomatico = 0;
-
+  let temporizadorAutomatico = null;
+  let cicloAutomatico = 0;
 
   if (document.getElementById("cameraMobintec")) {
     return;
@@ -32,67 +31,48 @@ let cicloAutomatico = 0;
   const painel = document.createElement("section");
 
   painel.id = "cameraMobintec";
-  painel.setAttribute(
-    "aria-labelledby",
-    "tituloCameraMobintec"
-  );
+  painel.setAttribute("aria-labelledby", "tituloCameraMobintec");
 
-painel.className = "painel";
-painel.style.cssText = "margin: 24px auto; max-width: 780px;";
-
-painel.innerHTML = `
-  <h2 id="tituloCameraMobintec">Análise de assentos por câmera</h2>
-
-  <!-- Seleção visual da fonte da imagem -->
-  <div role="group" aria-label="Fonte da imagem" class="grupo-fontes">
-    <button type="button" class="botao" data-fonte="celular" aria-pressed="true">
-      Câmera deste celular
-    </button>
-    <button type="button" class="botao" data-fonte="fixa" aria-pressed="false">
-      Câmera do ônibus (ESP32)
-    </button>
-  </div>
-
-  <!-- Área de prévia ou aviso da câmera fixa -->
-  <div class="subcaixa">
-    <video id="videoCameraMobintec" autoplay muted playsinline hidden aria-label="Prévia da câmera deste aparelho"></video>
-    
-    <p id="avisoFixaMobintec" hidden style="margin: 0;">
-      Consulta a última análise da câmera <strong>onibus-demo</strong>. A placa e a ponte precisam estar configuradas.
-    </p>
-
-    <p id="estadoCameraMobintec" role="status" aria-live="polite" style="margin: 0; font-weight: 600;">
-      Toque no botão abaixo para começar a leitura.
-    </p>
-  </div>
-
-  <!-- Botão único principal -->
-  <button type="button" id="iniciarLeituraMobintec" class="botao botao-forte" style="width: 100%;">
-    Começar leitura dos assentos
-  </button>
-
-  <!-- Ações secundárias -->
-  <div class="acoes-secundarias">
-    <button type="button" id="ouvirCameraMobintec" class="botao">
-      Ouvir última leitura
-    </button>
-    <button type="button" id="pararCameraMobintec" class="botao" hidden>
-      Parar leitura
-    </button>
-  </div>
-
-  <p style="font-size: .9rem; color: var(--on-dark-soft); margin: 0;">
-    O resultado é uma estimativa, não uma confirmação de lugar livre.
-  </p>
-`;
-
-
+  painel.className = "painel";
   painel.style.cssText =
     "margin:24px auto;padding:20px;max-width:780px;" +
     "border:2px solid currentColor;border-radius:16px;";
 
-  const principal = document.querySelector("#principal");
+  painel.innerHTML =
+    '<h2 id="tituloCameraMobintec">Análise de assentos por câmera</h2>' +
+    '<div role="group" aria-label="Fonte da imagem" class="grupo-fontes">' +
+      '<button type="button" class="botao" data-fonte="celular" aria-pressed="true">' +
+        'Câmera deste celular' +
+      '</button>' +
+      '<button type="button" class="botao" data-fonte="fixa" aria-pressed="false">' +
+        'Câmera do ônibus (ESP32)' +
+      '</button>' +
+    '</div>' +
+    '<div class="subcaixa">' +
+      '<video id="videoCameraMobintec" autoplay muted playsinline hidden aria-label="Prévia da câmera deste aparelho"></video>' +
+      '<p id="avisoFixaMobintec" hidden style="margin: 0;">' +
+        'Consulta a última análise da câmera <strong>onibus-demo</strong>. A placa e a ponte precisam estar configuradas.' +
+      '</p>' +
+      '<p id="estadoCameraMobintec" role="status" aria-live="polite" style="margin: 0; font-weight: 600;">' +
+        'Toque no botão abaixo para começar a leitura.' +
+      '</p>' +
+    '</div>' +
+    '<button type="button" id="iniciarLeituraMobintec" class="botao botao-forte" style="width: 100%;">' +
+      'Começar leitura dos assentos' +
+    '</button>' +
+    '<div class="acoes-secundarias">' +
+      '<button type="button" id="ouvirCameraMobintec" class="botao">' +
+        'Ouvir última leitura' +
+      '</button>' +
+      '<button type="button" id="pararCameraMobintec" class="botao" hidden>' +
+        'Parar leitura' +
+      '</button>' +
+    '</div>' +
+    '<p style="font-size: .9rem; color: var(--on-dark-soft); margin: 0;">' +
+      'O resultado é uma estimativa, não uma confirmação de lugar livre.' +
+    '</p>';
 
+  const principal = document.querySelector("#principal");
   (principal || document.body).appendChild(painel);
 
   const el = function (id) {
@@ -101,9 +81,10 @@ painel.innerHTML = `
 
   const video = el("videoCameraMobintec");
   const estado = el("estadoCameraMobintec");
-  const abrirBotao = el("abrirCameraMobintec");
-  const analisarBotao = el("analisarCameraMobintec");
-  const consultarBotao = el("consultarFixaMobintec");
+  const avisoFixa = el("avisoFixaMobintec");
+  const iniciarBotao = el("iniciarLeituraMobintec");
+  const pararBotao = el("pararCameraMobintec");
+  const botoesFonte = painel.querySelectorAll("[data-fonte]");
 
   video.style.cssText =
     "width:100%;max-height:380px;object-fit:contain;" +
@@ -116,10 +97,7 @@ painel.innerHTML = `
   }
 
   function recente() {
-    return (
-      leitura !== null &&
-      performance.now() < leitura.expira
-    );
+    return leitura !== null && performance.now() < leitura.expira;
   }
 
   function textoAtual() {
@@ -136,7 +114,7 @@ painel.innerHTML = `
 
     return (
       origem + " " + leitura.mensagem +
-      " A disponibilidade PCD não foi confirmada." +
+      " A disponibilidade PCD não foi verificada." +
       " Esta câmera não está vinculada ao destino escolhido."
     );
   }
@@ -160,13 +138,13 @@ painel.innerHTML = `
   }
 
   function parar(mostrarMensagem = true) {
-  automatico = false;
-  cicloAutomatico += 1;
+    automatico = false;
+    cicloAutomatico += 1;
 
-  clearTimeout(temporizadorAutomatico);
-  temporizadorAutomatico = null;
+    clearTimeout(temporizadorAutomatico);
+    temporizadorAutomatico = null;
 
-  sessao += 1;
+    sessao += 1;
 
     clearTimeout(temporizador);
     temporizador = null;
@@ -180,7 +158,6 @@ painel.innerHTML = `
       fluxo.getTracks().forEach(function (faixa) {
         faixa.stop();
       });
-
       fluxo = null;
     }
 
@@ -190,9 +167,9 @@ painel.innerHTML = `
     ocupado = false;
     abrindo = false;
 
-    abrirBotao.disabled = false;
-    analisarBotao.disabled = false;
-    consultarBotao.disabled = false;
+    iniciarBotao.disabled = false;
+    iniciarBotao.hidden = false;
+    pararBotao.hidden = true;
 
     limparLeitura();
 
@@ -206,81 +183,64 @@ painel.innerHTML = `
     }
 
     if (mostrarMensagem) {
-      escrever(
-        "Câmera e consultas paradas. Sem leitura atual."
-      );
+      escrever("Câmera e consultas paradas. Sem leitura atual.");
     }
-  }
 
-  async function abrirCamera() {
+    async function abrirCamera() {
     function iniciarAutomatico() {
-  clearTimeout(temporizadorAutomatico);
+      clearTimeout(temporizadorAutomatico);
 
-  automatico = true;
-  cicloAutomatico += 1;
+      automatico = true;
+      cicloAutomatico += 1;
 
-  const meuCiclo = cicloAutomatico;
+      const meuCiclo = cicloAutomatico;
 
-  async function executarCiclo() {
-    if (
-      !automatico ||
-      meuCiclo !== cicloAutomatico ||
-      modo !== "celular" ||
-      !fluxo ||
-      !fluxo.active ||
-      document.hidden
-    ) {
-      return;
+      async function executarCiclo() {
+        if (
+          !automatico ||
+          meuCiclo !== cicloAutomatico ||
+          modo !== "celular" ||
+          !fluxo ||
+          !fluxo.active ||
+          document.hidden
+        ) {
+          return;
+        }
+
+        if (
+          ocupado ||
+          video.readyState < 2 ||
+          !video.videoWidth ||
+          !video.videoHeight
+        ) {
+          temporizadorAutomatico = setTimeout(executarCiclo, 1000);
+          return;
+        }
+
+        await analisarFoto();
+
+        if (!automatico || meuCiclo !== cicloAutomatico) {
+          return;
+        }
+
+        if (!recente()) {
+          automatico = false;
+          iniciarBotao.disabled = false;
+          iniciarBotao.hidden = false;
+
+          escrever(
+            estado.textContent +
+            " O modo automático foi pausado. " +
+            "Para tentar novamente, toque em Começar leitura dos assentos."
+          );
+          return;
+        }
+
+        temporizadorAutomatico = setTimeout(executarCiclo, 8000);
+      }
+
+      temporizadorAutomatico = setTimeout(executarCiclo, 1000);
     }
-
-    // Aguarda a câmera disponibilizar a imagem.
-    if (
-      ocupado ||
-      video.readyState < 2 ||
-      !video.videoWidth ||
-      !video.videoHeight
-    ) {
-      temporizadorAutomatico = setTimeout(
-        executarCiclo,
-        1000
-      );
-      return;
-    }
-
-    await analisarFoto();
-
-    // Uma parada ou troca de câmera invalida este ciclo.
-    if (
-      !automatico ||
-      meuCiclo !== cicloAutomatico
-    ) {
-      return;
-    }
-
-    if (!recente()) {
-      automatico = false;
-
-      escrever(
-        estado.textContent +
-        " O modo automático foi pausado. " +
-        "Para tentar novamente, toque em Abrir câmera traseira."
-      );
-
-      return;
-    }
-
-    // Só agenda a próxima após concluir a anterior.
-    temporizadorAutomatico = setTimeout(
-      executarCiclo,
-      8000
-    );
-  }
-
-  temporizadorAutomatico = setTimeout(
-    executarCiclo,
-    1000
-  );
-}
 
     if (abrindo || modo !== "celular") {
       return;
@@ -291,7 +251,9 @@ painel.innerHTML = `
     const minhaSessao = sessao;
 
     abrindo = true;
-    abrirBotao.disabled = true;
+    iniciarBotao.disabled = true;
+    iniciarBotao.hidden = true;
+    pararBotao.hidden = false;
 
     escrever("Solicitando permissão da câmera…");
 
@@ -307,24 +269,19 @@ painel.innerHTML = `
         );
       }
 
-      const novoFluxo =
-        await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: "environment" },
-            width: { ideal: 960 },
-            height: { ideal: 720 }
-          },
-          audio: false
-        });
+      const novoFluxo = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 960 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      });
 
-      if (
-        minhaSessao !== sessao ||
-        document.hidden
-      ) {
+      if (minhaSessao !== sessao || document.hidden) {
         novoFluxo.getTracks().forEach(function (faixa) {
           faixa.stop();
         });
-
         return;
       }
 
@@ -338,13 +295,13 @@ painel.innerHTML = `
         return;
       }
 
-escrever(
-  "Câmera aberta. Análise automática ativada. " +
-  "Aponte para os assentos e mantenha o celular estável. " +
-  "Para encerrar, toque em Parar câmera e consultas."
-);
+      escrever(
+        "Câmera aberta. Análise automática ativada. " +
+        "Aponte para os assentos e mantenha o celular estável. " +
+        "Para encerrar, toque em Parar leitura."
+      );
 
-iniciarAutomatico();
+      iniciarAutomatico();
 
     } catch (erro) {
       if (minhaSessao !== sessao) {
@@ -362,7 +319,6 @@ iniciarAutomatico();
     } finally {
       if (minhaSessao === sessao) {
         abrindo = false;
-        abrirBotao.disabled = false;
       }
     }
   }
@@ -383,37 +339,19 @@ iniciarAutomatico();
 
     const escala = Math.min(
       1,
-      960 / Math.max(
-        video.videoWidth,
-        video.videoHeight
-      )
+      960 / Math.max(video.videoWidth, video.videoHeight)
     );
 
     const canvas = document.createElement("canvas");
-
-    canvas.width = Math.max(
-      1,
-      Math.round(video.videoWidth * escala)
-    );
-
-    canvas.height = Math.max(
-      1,
-      Math.round(video.videoHeight * escala)
-    );
+    canvas.width = Math.max(1, Math.round(video.videoWidth * escala));
+    canvas.height = Math.max(1, Math.round(video.videoHeight * escala));
 
     const contexto = canvas.getContext("2d");
-
     if (!contexto) {
       throw new Error("Não consegui preparar a foto.");
     }
 
-    contexto.drawImage(
-      video,
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
+    contexto.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     const blob = await new Promise(function (resolve) {
       canvas.toBlob(resolve, "image/jpeg", 0.8);
@@ -444,9 +382,7 @@ iniciarAutomatico();
           ? json.detail
           : "Falha no backend.";
 
-      throw new Error(
-        detalhe + " Código HTTP " + resposta.status + "."
-      );
+      throw new Error(detalhe + " Código HTTP " + resposta.status + ".");
     }
 
     return json;
@@ -474,19 +410,15 @@ iniciarAutomatico();
     leitura = {
       fonte: fonte,
       mensagem: json.mensagem,
-      expira: performance.now() +
-        Math.min(VALIDADE_MS, restante)
+      expira: performance.now() + Math.min(VALIDADE_MS, restante)
     };
 
     escrever(textoAtual());
-
     return true;
   }
 
   async function analisarFoto() {
-    // O botão permanece clicável para explicar
-    // por que uma análise não pode começar.
-    escrever("Botão acionado. Verificando a câmera…");
+    escrever("Verificando a câmera…");
 
     if (modo !== "celular") {
       escrever("Selecione Câmera deste celular.");
@@ -496,14 +428,14 @@ iniciarAutomatico();
     if (ocupado) {
       escrever(
         "Uma análise já está em andamento. Aguarde. " +
-        "Para cancelar, toque em Parar câmera e consultas."
+        "Para cancelar, toque em Parar leitura."
       );
       return;
     }
 
     if (!fluxo || !fluxo.active) {
       escrever(
-        "Primeiro toque em Abrir câmera traseira " +
+        "Primeiro toque em Começar leitura dos assentos " +
         "e permita o acesso."
       );
       return;
@@ -519,7 +451,6 @@ iniciarAutomatico();
 
     const minhaSessao = sessao;
     const abortador = new AbortController();
-
     controle = abortador;
 
     const prazo = setTimeout(function () {
@@ -540,29 +471,21 @@ iniciarAutomatico();
       const requisicaoId =
         window.crypto && window.crypto.randomUUID
           ? window.crypto.randomUUID()
-          : Date.now() + "-" +
-            Math.random().toString(36).slice(2);
+          : Date.now() + "-" + Math.random().toString(36).slice(2);
 
       const formulario = new FormData();
-
-      // O nome precisa ser "image", igual ao main.py.
       formulario.append("image", blob, "captura.jpg");
       formulario.append("capturadoEm", capturadoEm);
       formulario.append("requisicaoId", requisicaoId);
 
-      escrever(
-        "Foto capturada. Enviando para análise no backend…"
-      );
+      escrever("Foto capturada. Enviando para análise no backend…");
 
-      const resposta = await fetch(
-        BACKEND + "/api/analisar",
-        {
-          method: "POST",
-          body: formulario,
-          signal: abortador.signal,
-          cache: "no-store"
-        }
-      );
+      const resposta = await fetch(BACKEND + "/api/analisar", {
+        method: "POST",
+        body: formulario,
+        signal: abortador.signal,
+        cache: "no-store"
+      });
 
       const json = await lerResposta(resposta);
 
@@ -574,9 +497,7 @@ iniciarAutomatico();
         json.capturadoEm !== capturadoEm ||
         json.requisicaoId !== requisicaoId
       ) {
-        throw new Error(
-          "A resposta não corresponde à foto enviada."
-        );
+        throw new Error("A resposta não corresponde à foto enviada.");
       }
 
       const idade = performance.now() - inicio;
@@ -594,9 +515,7 @@ iniciarAutomatico();
         Number(json.validaPorSegundos) * 1000
       );
 
-      if (
-        guardarLeitura(json, restante, "celular")
-      ) {
+      if (guardarLeitura(json, restante, "celular")) {
         ouvirLeitura();
       }
 
@@ -611,7 +530,7 @@ iniciarAutomatico();
         erro.name === "AbortError"
           ? "O backend demorou para responder. O Render pode estar iniciando. Tente novamente."
           : erro instanceof TypeError
-            ? "Não consegui acessar o backend. Confira se ele está disponível e permite a origem https://guitimoteodasilva-jpg.github.io."
+            ? "Não consegui acessar o backend. Confira se ele está disponível e permite a origem github.io."
             : "Falha: " + erro.message
       );
 
@@ -628,18 +547,15 @@ iniciarAutomatico();
     }
   }
 
+  }
+
   async function consultarFixa(minhaSessao) {
-    if (
-      minhaSessao !== sessao ||
-      modo !== "fixa" ||
-      document.hidden
-    ) {
+    if (minhaSessao !== sessao || modo !== "fixa" || document.hidden) {
       return;
     }
 
     const inicio = performance.now();
     const abortador = new AbortController();
-
     controle = abortador;
 
     const prazo = setTimeout(function () {
@@ -650,8 +566,7 @@ iniciarAutomatico();
 
     try {
       const resposta = await fetch(
-        BACKEND + "/api/cameras/" +
-          CAMERA_ID + "/resultado",
+        BACKEND + "/api/cameras/" + CAMERA_ID + "/resultado",
         {
           cache: "no-store",
           signal: abortador.signal
@@ -686,7 +601,9 @@ iniciarAutomatico();
 
       continuar = false;
       limparLeitura();
-      consultarBotao.disabled = false;
+      iniciarBotao.disabled = false;
+      iniciarBotao.hidden = false;
+      pararBotao.hidden = true;
 
       escrever(
         "Não consegui consultar a câmera fixa: " +
@@ -702,11 +619,7 @@ iniciarAutomatico();
         controle = null;
       }
 
-      if (
-        continuar &&
-        minhaSessao === sessao &&
-        modo === "fixa"
-      ) {
+      if (continuar && minhaSessao === sessao && modo === "fixa") {
         temporizador = setTimeout(function () {
           consultarFixa(minhaSessao);
         }, 3000);
@@ -714,57 +627,57 @@ iniciarAutomatico();
     }
   }
 
-  abrirBotao.onclick = abrirCamera;
-  analisarBotao.onclick = analisarFoto;
+  iniciarBotao.onclick = function () {
+    if (modo === "celular") {
+      abrirCamera();
+    } else {
+      parar(false);
 
-  consultarBotao.onclick = function () {
-    parar(false);
+      modo = "fixa";
+      iniciarBotao.disabled = true;
+      iniciarBotao.hidden = true;
+      pararBotao.hidden = false;
 
-    modo = "fixa";
-    consultarBotao.disabled = true;
-
-    escrever("Consultando a câmera fixa…");
-    consultarFixa(sessao);
+      escrever("Consultando a câmera fixa…");
+      consultarFixa(sessao);
+    }
   };
+
+  botoesFonte.forEach(function (botao) {
+    botao.onclick = function () {
+      const escolhido = botao.dataset.fonte;
+
+      if (escolhido === modo && !fluxo && !temporizador) {
+        return;
+      }
+
+      parar(false);
+      modo = escolhido;
+
+      botoesFonte.forEach(function (b) {
+        b.setAttribute("aria-pressed", b === botao ? "true" : "false");
+      });
+
+      avisoFixa.hidden = modo !== "fixa";
+      escrever("Toque no botão abaixo para começar a leitura.");
+    };
+  });
 
   el("ouvirCameraMobintec").onclick = ouvirLeitura;
 
-  el("pararCameraMobintec").onclick = function () {
+  pararBotao.onclick = function () {
     parar();
   };
 
-  el("fonteCameraMobintec").onchange = function () {
-    const escolhido = this.value;
-
-    parar(false);
-    modo = escolhido;
-
-    el("controlesCelularMobintec").hidden =
-      modo !== "celular";
-
-    el("controlesFixaMobintec").hidden =
-      modo !== "fixa";
-
-    escrever(
-      modo === "celular"
-        ? "Abra a câmera e toque em Analisar uma foto."
-        : "Toque em Iniciar consulta da câmera fixa."
-    );
-  };
-
   painel.addEventListener("click", function (evento) {
-    // Não aciona o microfone global da tela inicial.
     evento.stopPropagation();
   });
 
-  document.addEventListener(
-    "visibilitychange",
-    function () {
-      if (document.hidden) {
-        parar();
-      }
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) {
+      parar();
     }
-  );
+  });
 
   window.addEventListener("pagehide", function () {
     parar(false);
@@ -788,11 +701,6 @@ iniciarAutomatico();
       );
     }
   }, 1000);
-
-  /*
-   * Integração com o script.js enviado.
-   * Preserva mapa, localização e lugares próximos.
-   */
 
   if (typeof textoAssento === "function") {
     textoAssento = textoAtual;
@@ -838,30 +746,24 @@ iniciarAutomatico();
           : "Chegou · simulação";
 
       const feito = dados.segundosIniciais > 0
-        ? 1 - dados.segundosAteChegar /
-          dados.segundosIniciais
+        ? 1 - dados.segundosAteChegar / dados.segundosIniciais
         : 1;
 
       pegar("#barra").style.width =
-        Math.round(
-          Math.min(1, Math.max(0, feito)) * 100
-        ) + "%";
+        Math.round(Math.min(1, Math.max(0, feito)) * 100) + "%";
 
       const mensagem =
         "Este destino não tem câmera vinculada. " +
         "Consulte o painel de câmera para uma análise " +
         "independente. Disponibilidade PCD não confirmada.";
 
-      if (
-        pegar("#textoCamera").textContent !== mensagem
-      ) {
+      if (pegar("#textoCamera").textContent !== mensagem) {
         pegar("#textoCamera").textContent = mensagem;
       }
     };
   }
 
   if (typeof lerCamera === "function") {
-    // Desativa as mudanças aleatórias de assentos.
     lerCamera = function () {};
   }
 
@@ -914,10 +816,7 @@ iniciarAutomatico();
     const repetirOriginal = repetirUltima;
 
     repetirUltima = function () {
-      if (
-        ultimaMensagemCamera &&
-        ultimaFala === ultimaMensagemCamera
-      ) {
+      if (ultimaMensagemCamera && ultimaFala === ultimaMensagemCamera) {
         ouvirLeitura();
       } else {
         repetirOriginal();
@@ -925,3 +824,5 @@ iniciarAutomatico();
     };
   }
 })();
+
+ 
