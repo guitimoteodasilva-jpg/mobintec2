@@ -37,92 +37,55 @@ let cicloAutomatico = 0;
     "tituloCameraMobintec"
   );
 
-  painel.innerHTML = `
-    <h2 id="tituloCameraMobintec">
-      Análise de assentos por câmera
-    </h2>
+painel.className = "painel";
+painel.style.cssText = "margin: 24px auto; max-width: 780px;";
 
-    <label for="fonteCameraMobintec">
-      Fonte da imagem
-    </label>
+painel.innerHTML = `
+  <h2 id="tituloCameraMobintec">Análise de assentos por câmera</h2>
 
-    <select id="fonteCameraMobintec">
-      <option value="celular">Câmera deste celular</option>
-      <option value="fixa">ESP32-CAM de demonstração</option>
-    </select>
+  <!-- Seleção visual da fonte da imagem -->
+  <div role="group" aria-label="Fonte da imagem" class="grupo-fontes">
+    <button type="button" class="botao" data-fonte="celular" aria-pressed="true">
+      Câmera deste celular
+    </button>
+    <button type="button" class="botao" data-fonte="fixa" aria-pressed="false">
+      Câmera do ônibus (ESP32)
+    </button>
+  </div>
 
-    <div id="controlesCelularMobintec">
-      <p>
-        <button
-          type="button"
-          id="abrirCameraMobintec"
-          class="botao">
-          Abrir câmera traseira
-        </button>
-
-        <button
-          type="button"
-          id="analisarCameraMobintec"
-          class="botao">
-          Analisar uma foto
-        </button>
-      </p>
-
-      <video
-        id="videoCameraMobintec"
-        autoplay
-        muted
-        playsinline
-        hidden
-        aria-label="Prévia da câmera deste aparelho">
-      </video>
-
- 
-    </div>
-
-    <div id="controlesFixaMobintec" hidden>
-      <p>
-        Este modo consulta a última análise da câmera
-        onibus-demo. A placa e a ponte precisam estar
-        configuradas separadamente.
-      </p>
-
-      <button
-        type="button"
-        id="consultarFixaMobintec"
-        class="botao">
-        Iniciar consulta da câmera fixa
-      </button>
-    </div>
-
-    <p>
-      <button
-        type="button"
-        id="ouvirCameraMobintec"
-        class="botao">
-        Ouvir última leitura
-      </button>
-
-      <button
-        type="button"
-        id="pararCameraMobintec"
-        class="botao">
-        Parar câmera e consultas
-      </button>
+  <!-- Área de prévia ou aviso da câmera fixa -->
+  <div class="subcaixa">
+    <video id="videoCameraMobintec" autoplay muted playsinline hidden aria-label="Prévia da câmera deste aparelho"></video>
+    
+    <p id="avisoFixaMobintec" hidden style="margin: 0;">
+      Consulta a última análise da câmera <strong>onibus-demo</strong>. A placa e a ponte precisam estar configuradas.
     </p>
 
-    <p
-      id="estadoCameraMobintec"
-      role="status"
-      aria-live="polite">
-     Abra a câmera para começar.
+    <p id="estadoCameraMobintec" role="status" aria-live="polite" style="margin: 0; font-weight: 600;">
+      Toque no botão abaixo para começar a leitura.
     </p>
+  </div>
 
-    <p>
-      O resultado é uma estimativa, não uma confirmação
-      de lugar livre.
-    </p>
-  `;
+  <!-- Botão único principal -->
+  <button type="button" id="iniciarLeituraMobintec" class="botao botao-forte" style="width: 100%;">
+    Começar leitura dos assentos
+  </button>
+
+  <!-- Ações secundárias -->
+  <div class="acoes-secundarias">
+    <button type="button" id="ouvirCameraMobintec" class="botao">
+      Ouvir última leitura
+    </button>
+    <button type="button" id="pararCameraMobintec" class="botao" hidden>
+      Parar leitura
+    </button>
+  </div>
+
+  <p style="font-size: .9rem; color: var(--on-dark-soft); margin: 0;">
+    O resultado é uma estimativa, não uma confirmação de lugar livre.
+  </p>
+`;
+
 
   painel.style.cssText =
     "margin:24px auto;padding:20px;max-width:780px;" +
