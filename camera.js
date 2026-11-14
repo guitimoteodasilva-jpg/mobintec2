@@ -372,18 +372,14 @@
       json = await resposta.json();
     } catch (erro) {
       throw new Error(
-        "O backend respondeu fora do formato esperado. " +
-        "Código HTTP " + resposta.status + "."
+        "Não foi possível ler a resposta do sistema agora. Tente novamente."
       );
     }
 
     if (!resposta.ok) {
-      const detalhe =
-        typeof json.detail === "string"
-          ? json.detail
-          : "Falha no backend.";
-
-      throw new Error(detalhe + " Código HTTP " + resposta.status + ".");
+      throw new Error(
+        "O sistema de análise está indisponível no momento. Tente novamente em instantes."
+      );
     }
 
     return json;
@@ -401,8 +397,8 @@
 
       escrever(
         json.estado === "expirado"
-          ? "A leitura expirou. Capture uma foto nova."
-          : "O backend não forneceu uma leitura recente. Confira se o main.py atualizado foi publicado."
+          ? "A leitura anterior venceu. Aguarde a próxima foto."
+          : "Não foi possível identificar os assentos agora. Tente apontar a câmera novamente."
       );
 
       return false;
@@ -417,6 +413,7 @@
     escrever(textoAtual());
     return true;
   }
+
 
   async function analisarFoto() {
     escrever("Verificando a câmera…");
@@ -458,8 +455,8 @@
       abortador.abort();
     }, 45000);
 
-    try {
-      escrever("Capturando a foto…");
+      try {
+      escrever("Tirando foto dos assentos…");
 
       const capturadoEm = new Date().toISOString();
       const inicio = performance.now();
@@ -479,7 +476,7 @@
       formulario.append("capturadoEm", capturadoEm);
       formulario.append("requisicaoId", requisicaoId);
 
-      escrever("Foto capturada. Enviando para análise no backend…");
+      escrever("Procurando assentos livres na imagem…");
 
       const resposta = await fetch(BACKEND + "/api/analisar", {
         method: "POST",
@@ -498,15 +495,14 @@
         json.capturadoEm !== capturadoEm ||
         json.requisicaoId !== requisicaoId
       ) {
-        throw new Error("A resposta não corresponde à foto enviada.");
+        throw new Error("A imagem analisada não é a atual. Tentando novamente.");
       }
 
       const idade = performance.now() - inicio;
 
       if (idade >= VALIDADE_MS) {
         escrever(
-          "A resposta demorou mais de 15 segundos " +
-          "e foi descartada. Capture uma foto nova."
+          "A análise demorou muito e foi descartada para sua segurança. Tentando uma nova foto."
         );
         return;
       }
@@ -529,10 +525,10 @@
 
       escrever(
         erro.name === "AbortError"
-          ? "O backend demorou para responder. O Render pode estar iniciando. Tente novamente."
+          ? "O sistema demorou para responder. Aguarde um pouco e toque em Começar leitura dos assentos."
           : erro instanceof TypeError
-            ? "Não consegui acessar o backend. Confira se ele está disponível e permite a origem github.io."
-            : "Falha: " + erro.message
+            ? "Sem conexão com o sistema de análise. Verifique sua internet e tente de novo."
+            : "Não foi possível analisar agora: " + erro.message
       );
 
     } finally {
@@ -586,8 +582,7 @@
         limparLeitura();
 
         escrever(
-          "A câmera fixa ainda não enviou uma leitura. " +
-          "A ESP32-CAM e a ponte precisam estar configuradas."
+          "A câmera do ônibus ainda não enviou imagens. Aguarde um instante."
         );
       } else {
         guardarLeitura(json, restante, "fixa");
@@ -605,11 +600,12 @@
       pararBotao.hidden = true;
 
       escrever(
-        "Não consegui consultar a câmera fixa: " +
+        "Não consegui conectar com a câmera do ônibus. " +
         (erro.name === "AbortError"
-          ? "o backend demorou para responder."
-          : erro.message)
+          ? "O sistema demorou para responder. Tente novamente."
+          : "Verifique sua conexão e tente de novo.")
       );
+
 
     } finally {
       clearTimeout(prazo);
