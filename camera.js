@@ -185,6 +185,7 @@
     if (mostrarMensagem) {
       escrever("Câmera e consultas paradas. Sem leitura atual.");
     }
+  }
 
     async function abrirCamera() {
     function iniciarAutomatico() {
@@ -545,8 +546,6 @@
         ocupado = false;
       }
     }
-  }
-
   }
 
   async function consultarFixa(minhaSessao) {
