@@ -7,7 +7,7 @@
 (function () {
   "use strict";
 
-  const BACKEND = "https://onrender.com";
+  const BACKEND = "https://" + "mobintec-backend" + ".onrender.com";
   const CAMERA_ID = "onibus-demo";
   const VALIDADE_MS = 15000;
 
