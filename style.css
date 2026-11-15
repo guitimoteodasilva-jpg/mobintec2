@@ -549,7 +549,7 @@ body:not(.claro) .bolha .nome {
 }
 
 .painel .botao-aba[aria-current="true"],
-.painel .botao-cat[aria-current="true"] {
+.botao-cat[aria-current="true"] {
   background: var(--primary);
   border-color: var(--primary);
   color: var(--on-primary);
@@ -630,14 +630,45 @@ body.claro .pino {
     border: 2px solid ButtonText;
   }
 }
- @media (max-width: 640px) {
+
+/* ---------- Conversa com a assistente (tela inicial) ---------- */
+.conversa {
+  list-style: none;
+  margin: .75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  text-align: left;
+}
+
+.conversa li {
+  padding: .6rem .9rem;
+  border-radius: 12px;
+  background: var(--card-2);
+  color: var(--ink);
+}
+
+.conversa .voce {
+  background: var(--primary);
+  color: var(--on-primary);
+  align-self: flex-end;
+  max-width: 90%;
+}
+
+.conversa .assistente {
+  align-self: flex-start;
+  max-width: 95%;
+}
+/* ---------- Controles da Câmera (Mobintec) ---------- */
+@media (max-width: 640px) {
   #controlesCelularMobintec > p:first-of-type {
     display: flex;
     flex-wrap: wrap;
     gap: .75rem;
   }
 }
-/* ---------- Controles da Câmera (Mobintec) ---------- */
+
 .grupo-fontes {
   display: grid;
   grid-template-columns: 1fr 1fr;
